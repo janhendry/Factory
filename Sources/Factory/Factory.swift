@@ -24,8 +24,6 @@
 // THE SOFTWARE.
 //
 
-import Foundation
-
 /// Factory manages the dependency injection process for a given object or service.
 public struct Factory<T> {
 
@@ -119,15 +117,11 @@ open class SharedContainer {
         /// Pushes the current set of registration overrides onto a stack. Useful when testing when you want to push the current set of registions,
         /// add your own, test, then pop the stack to restore the world to its original state.
         public static func push() {
-            defer { lock.unlock() }
-            lock.lock()
             stack.append(registrations)
         }
 
         /// Pops a previously pushed registration stack. Does nothing if stack is empty.
         public static func pop() {
-            defer { lock.unlock() }
-            lock.lock()
             if let registrations = stack.popLast() {
                 self.registrations = registrations
             }
@@ -135,35 +129,26 @@ open class SharedContainer {
 
         /// Resets and deletes all registered factory overrides.
         public static func reset() {
-            defer { lock.unlock() }
-            lock.lock()
             registrations = [:]
         }
 
         /// Internal registration function used by Factory
-        fileprivate static func register(id: UUID, factory: AnyFactory) {
-            defer { lock.unlock() }
-            lock.lock()
+        fileprivate static func register(id: Int, factory: AnyFactory) {
             registrations[id] = factory
         }
 
         /// Internal resolution function used by Factory
-        fileprivate static func factory(for id: UUID) -> AnyFactory? {
-            defer { lock.unlock() }
-            lock.lock()
+        fileprivate static func factory(for id: Int) -> AnyFactory? {
             return registrations[id]
         }
 
         /// Internal reset function used by Factory
-        fileprivate static func reset(_ id: UUID) {
-            defer { lock.unlock() }
-            lock.lock()
+        fileprivate static func reset(_ id: Int) {
             registrations.removeValue(forKey: id)
         }
 
-        private static var lock = NSLock()
-        private static var registrations: [UUID: AnyFactory] = .init(minimumCapacity: 64)
-        private static var stack: [[UUID: AnyFactory]] = []
+        private static var registrations: [Int: AnyFactory] = .init(minimumCapacity: 64)
+        private static var stack: [[Int: AnyFactory]] = []
 
     }
 
@@ -171,29 +156,21 @@ open class SharedContainer {
     public class Scope {
 
         fileprivate init() {
-            defer { lock.unlock() }
-            lock.lock()
             Self.scopes.append(self)
         }
 
         /// Resets the cache. Any factory using this cache will return a new instance after the cache is reset.
         public func reset() {
-            defer { lock.unlock() }
-            lock.lock()
             cache = [:]
         }
 
         /// Public query mechanism for cache empty
         public var isEmpty: Bool {
-            defer { lock.unlock() }
-            lock.lock()
             return cache.isEmpty
         }
 
         /// Internal cache resolution function used by Factory Registration
-        fileprivate func resolve<T>(id: UUID, factory: () -> T) -> T {
-            defer { lock.unlock() }
-            lock.lock()
+        fileprivate func resolve<T>(id: Int, factory: () -> T) -> T {
             if let box = cache[id] {
                 if let instance = box.instance as? T {
                     if let optional = instance as? OptionalProtocol {
@@ -213,9 +190,7 @@ open class SharedContainer {
         }
 
         /// Internal reset function used by Factory
-        fileprivate func reset(_ id: UUID) {
-            defer { lock.unlock() }
-            lock.lock()
+        fileprivate func reset(_ id: Int) {
             cache.removeValue(forKey: id)
         }
 
@@ -228,8 +203,7 @@ open class SharedContainer {
             }
         }
 
-        private var lock = NSRecursiveLock()
-        private var cache: [UUID: AnyBox] = .init(minimumCapacity: 64)
+        private var cache: [Int: AnyBox] = .init(minimumCapacity: 64)
 
     }
 
@@ -359,7 +333,7 @@ private struct TypedFactory<P, T>: AnyFactory {
 /// Internal registration manager for factories.
 private struct Registration<P, T> {
 
-    let id: UUID = UUID()
+    let id: Int = 1
     let factory: (P) -> T
     let scope: SharedContainer.Scope?
 
